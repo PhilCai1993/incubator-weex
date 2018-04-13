@@ -40,6 +40,7 @@ typedef CGFloat WXPixelType;
 // @parameter scaleFactor: please use weexInstance's pixelScaleFactor property
 + (WXPixelType)WXPixelType:(id)value scaleFactor:(CGFloat)scaleFactor;
 
++ (css_direction_t)css_direction_t:(id)value;
 + (css_flex_direction_t)css_flex_direction_t:(id)value;
 + (css_align_t)css_align_t:(id)value;
 + (css_wrap_type_t)css_wrap_type_t:(id)value;
@@ -53,6 +54,7 @@ typedef CGFloat WXPixelType;
 
 + (UIColor *)UIColor:(id)value;
 + (CGColorRef)CGColor:(id)value;
++ (NSString *)HexWithColor:(UIColor *)color;
 + (WXBorderStyle)WXBorderStyle:(id)value;
 typedef BOOL WXClipType;
 + (WXClipType)WXClipType:(id)value;

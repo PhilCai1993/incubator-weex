@@ -17,6 +17,7 @@
  * under the License.
  */
 
+
 #import "WXComponent+Layout.h"
 #import "WXComponent_internal.h"
 #import "WXTransform.h"
@@ -34,11 +35,21 @@
 
 - (void)setNeedsLayout
 {
-    _isLayoutDirty = YES;
     WXComponent *supercomponent = [self supercomponent];
     if(supercomponent){
+        for (WXComponent *siblingComponent in [supercomponent subcomponents]) {
+            [siblingComponent _needRecalculateLayout];
+        }
         [supercomponent setNeedsLayout];
+    } else {
+        [self _needRecalculateLayout];
     }
+}
+
+- (void)_needRecalculateLayout
+{
+    _isLayoutDirty = YES;
+    [self _clearLayoutCSS];
 }
 
 - (BOOL)needsLayout
@@ -112,6 +123,7 @@
     return (int)(count);
 }
 
+
 - (void)_frameDidCalculated:(BOOL)isChanged
 {
     WXAssertComponentThread();
@@ -164,10 +176,10 @@
     _cssNode->layout.should_update = false;
     _isLayoutDirty = NO;
     
-    CGRect newFrame = CGRectMake(WXRoundPixelValue(_cssNode->layout.position[CSS_LEFT]),
-                                 WXRoundPixelValue(_cssNode->layout.position[CSS_TOP]),
-                                 WXRoundPixelValue(_cssNode->layout.dimensions[CSS_WIDTH]),
-                                 WXRoundPixelValue(_cssNode->layout.dimensions[CSS_HEIGHT]));
+    CGRect newFrame = CGRectMake(isnan(WXRoundPixelValue(_cssNode->layout.position[CSS_LEFT]))?0:WXRoundPixelValue(_cssNode->layout.position[CSS_LEFT]),
+                                 isnan(WXRoundPixelValue(_cssNode->layout.position[CSS_TOP]))?0:WXRoundPixelValue(_cssNode->layout.position[CSS_TOP]),
+                                 isnan(WXRoundPixelValue(_cssNode->layout.dimensions[CSS_WIDTH]))?0:WXRoundPixelValue(_cssNode->layout.dimensions[CSS_WIDTH]),
+                                 isnan(WXRoundPixelValue(_cssNode->layout.dimensions[CSS_HEIGHT]))?0:WXRoundPixelValue(_cssNode->layout.dimensions[CSS_HEIGHT]));
     
     BOOL isFrameChanged = NO;
     if (!CGRectEqualToRect(newFrame, _calculatedFrame)) {
@@ -184,8 +196,8 @@
     _cssNode->layout.position[CSS_TOP] = 0;
     
     [self _frameDidCalculated:isFrameChanged];
-    
-    for (WXComponent *subcomponent in _subcomponents) {
+    NSArray * subcomponents = [_subcomponents copy];
+    for (WXComponent *subcomponent in subcomponents) {
         [subcomponent _calculateFrameWithSuperAbsolutePosition:newAbsolutePosition gatherDirtyComponents:dirtyComponents];
     }
 }
@@ -204,6 +216,23 @@
         [self.ancestorScroller adjustSticky];
     }
     [self layoutDidFinish];
+}
+
+/**
+ * clear the layout variables on css node
+ **/
+- (void)_clearLayoutCSS {
+    memset(&(_cssNode->layout), 0, sizeof(_cssNode->layout));
+    _cssNode->layout.dimensions[CSS_WIDTH] = CSS_UNDEFINED;
+    _cssNode->layout.dimensions[CSS_HEIGHT] = CSS_UNDEFINED;
+    
+    // Such that the comparison is always going to be false
+    _cssNode->layout.last_requested_dimensions[CSS_WIDTH] = -1;
+    _cssNode->layout.last_requested_dimensions[CSS_HEIGHT] = -1;
+    _cssNode->layout.last_parent_max_width = -1;
+    _cssNode->layout.last_parent_max_height = -1;
+    _cssNode->layout.last_direction = (css_direction_t)-1;
+    _cssNode->layout.should_update = true;
 }
 
 #define WX_STYLE_FILL_CSS_NODE(key, cssProp, type)\
@@ -246,6 +275,7 @@ do {\
 
 - (void)_fillCSSNode:(NSDictionary *)styles
 {
+    WX_STYLE_FILL_CSS_NODE(direction, direction, css_direction_t)
     // flex
     WX_STYLE_FILL_CSS_NODE(flex, flex, CGFloat)
     WX_STYLE_FILL_CSS_NODE(flexDirection, flex_direction, css_flex_direction_t)
@@ -309,6 +339,7 @@ do {\
 
 - (void)_resetCSSNode:(NSArray *)styles;
 {
+    WX_STYLE_RESET_CSS_NODE(direction, direction, CSS_DIRECTION_LTR)
     // flex
     WX_STYLE_RESET_CSS_NODE(flex, flex, 0.0)
     WX_STYLE_RESET_CSS_NODE(flexDirection, flex_direction, CSS_FLEX_DIRECTION_COLUMN)
@@ -408,5 +439,4 @@ static css_dim_t cssNodeMeasure(void *context, float width, css_measure_mode_t w
     
     return (css_dim_t){resultSize.width, resultSize.height};
 }
-
 @end
